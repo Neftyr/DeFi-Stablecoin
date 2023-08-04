@@ -1,4 +1,4 @@
-# ??? Stablecoin Assumptions:
+# Neftyr (NFR) Stablecoin Assumptions:
 
 1. Relative Stability: Anchored/Pegged to $1.00 (Better here would be Floating (HARD version))
     - Chainlink price feed.
