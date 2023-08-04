@@ -8,3 +8,5 @@
 3. Collateral: Exogenous [Collateral that originates from outside of the protocol meaning if our stablecoin fails our underlying collateral doesn't fail] (Crypto)
     - ETH
     - BTC
+
+Work on engine in progress...
