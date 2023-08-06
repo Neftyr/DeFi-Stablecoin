@@ -53,6 +53,7 @@ contract NFREngine is ReentrancyGuard {
     NeftyrStableCoin private immutable i_nfr;
 
     /** @dev Modifiers */
+
     modifier moreThanZero(uint256 amount) {
         if (amount == 0) revert NFREngine__NeedsMoreThanZero();
         _;
@@ -64,6 +65,7 @@ contract NFREngine is ReentrancyGuard {
     }
 
     /** @dev Constructor */
+
     constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address nfrAddress) {
         // USD Price Feeds
         if (tokenAddresses.length != priceFeedAddresses.length) revert NFREngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
