@@ -27,24 +27,29 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 
 contract NFREngine is ReentrancyGuard {
+    //////////////////
     /** @dev Errors */
+    //////////////////
+
     error NFREngine__NeedsMoreThanZero();
     error NFREngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
-    error NFREngine__TokenNotAllowed();
+    error NFREngine__TokenNotAllowed(address token);
     error NFREngine__TransferFailed();
     error NFREngine__BreaksHealthFactor(uint256 healthFactor);
     error NFREngine__MintFailed();
     error NFR__HealthFactorOk();
     error NFREngine__HealthFactorNotImproved();
 
+    /////////////////////
     /** @dev Libraries */
+    /////////////////////
+
     using OracleLib for AggregatorV3Interface;
 
-    /** @dev Events */
-    event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
-    event CollateralRedeemed(address indexed redeemFrom, address indexed redeemTo, address token, uint256 amount); // if redeemFrom != redeemedTo, then it was liquidated
-
+    ///////////////////////////
     /** @dev State Variables */
+    ///////////////////////////
+
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // This means you need to be 200% over-collateralized
     uint256 private constant LIQUIDATION_BONUS = 10; // This means you get assets at a 10% discount when liquidating
     uint256 private constant LIQUIDATION_PRECISION = 100;
@@ -60,18 +65,31 @@ contract NFREngine is ReentrancyGuard {
 
     NeftyrStableCoin private immutable i_nfr;
 
+    //////////////////
+    /** @dev Events */
+    //////////////////
+
+    event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
+    event CollateralRedeemed(address indexed redeemFrom, address indexed redeemTo, address token, uint256 amount); // if redeemFrom != redeemedTo, then it was liquidated
+
+    /////////////////////
     /** @dev Modifiers */
+    /////////////////////
+
     modifier moreThanZero(uint256 amount) {
         if (amount == 0) revert NFREngine__NeedsMoreThanZero();
         _;
     }
 
     modifier isAllowedToken(address token) {
-        if (s_priceFeeds[token] == address(0)) revert NFREngine__TokenNotAllowed();
+        if (s_priceFeeds[token] == address(0)) revert NFREngine__TokenNotAllowed(token);
         _;
     }
 
+    ///////////////////////
     /** @dev Constructor */
+    ///////////////////////
+
     constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address nfrAddress) {
         // USD Price Feeds
         if (tokenAddresses.length != priceFeedAddresses.length) revert NFREngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
@@ -85,23 +103,9 @@ contract NFREngine is ReentrancyGuard {
         i_nfr = NeftyrStableCoin(nfrAddress);
     }
 
+    //////////////////////////////
     /** @dev External Functions */
-    /**
-     * @notice Following CEI (Checks, Effects, Interactions).
-     * @param collateralTokenAddress The address of the token to deposit collateral.
-     * @param collateralAmount The amount of collateral to deposit.
-     */
-    function depositCollateral(
-        address collateralTokenAddress,
-        uint256 collateralAmount
-    ) public moreThanZero(collateralAmount) isAllowedToken(collateralTokenAddress) nonReentrant {
-        s_collateralDeposited[msg.sender][collateralTokenAddress] += collateralAmount;
-
-        emit CollateralDeposited(msg.sender, collateralTokenAddress, collateralAmount);
-
-        bool success = IERC20(collateralTokenAddress).transferFrom(msg.sender, address(this), collateralAmount);
-        if (!success) revert NFREngine__TransferFailed();
-    }
+    //////////////////////////////
 
     /**
      * @notice This function will deposit your collateral and mint NFR in one transaction.
@@ -119,7 +123,7 @@ contract NFREngine is ReentrancyGuard {
      * @param collateralTokenAddress: The ERC20 token address of the collateral you're depositing.
      * @param collateralAmount: The amount of collateral you're depositing.
      */
-    function redeemCollateral(address collateralTokenAddress, uint256 collateralAmount) public moreThanZero(collateralAmount) nonReentrant {
+    function redeemCollateral(address collateralTokenAddress, uint256 collateralAmount) external moreThanZero(collateralAmount) nonReentrant {
         _redeemCollateral(collateralTokenAddress, collateralAmount, msg.sender, msg.sender);
         revertIfHealthFactorIsBroken(msg.sender);
     }
@@ -134,18 +138,6 @@ contract NFREngine is ReentrancyGuard {
         _burnNFR(amountNfrToBurn, msg.sender, msg.sender);
         _redeemCollateral(collateralTokenAddress, collateralAmount, msg.sender, msg.sender);
         revertIfHealthFactorIsBroken(msg.sender);
-    }
-
-    /**
-     * @notice Following CEI (Checks, Effects, Interactions).
-     * @param amountNfrToMint The amount of decentralized stablecoin to mint.
-     * @dev Must have more collateral value than the minimum threshold.
-     */
-    function mintNFR(uint256 amountNfrToMint) public moreThanZero(amountNfrToMint) nonReentrant {
-        s_NFRMinted[msg.sender] += amountNfrToMint;
-        revertIfHealthFactorIsBroken(msg.sender);
-        bool minted = i_nfr.mint(msg.sender, amountNfrToMint);
-        if (!minted) revert NFREngine__MintFailed();
     }
 
     function burnNFR(uint256 amount) external moreThanZero(amount) {
@@ -190,9 +182,57 @@ contract NFREngine is ReentrancyGuard {
         revertIfHealthFactorIsBroken(msg.sender);
     }
 
-    function getHealthFactor() external view {}
+    ////////////////////////////
+    /** @dev Public Functions */
+    ////////////////////////////
 
+    /**
+     * @notice Following CEI (Checks, Effects, Interactions).
+     * @param amountNfrToMint The amount of decentralized stablecoin to mint.
+     * @dev Must have more collateral value than the minimum threshold.
+     */
+    function mintNFR(uint256 amountNfrToMint) public moreThanZero(amountNfrToMint) nonReentrant {
+        s_NFRMinted[msg.sender] += amountNfrToMint;
+        revertIfHealthFactorIsBroken(msg.sender);
+
+        bool minted = i_nfr.mint(msg.sender, amountNfrToMint);
+        if (!minted) revert NFREngine__MintFailed();
+    }
+
+    /**
+     * @notice Following CEI (Checks, Effects, Interactions).
+     * @param collateralTokenAddress The address of the token to deposit collateral.
+     * @param collateralAmount The amount of collateral to deposit.
+     */
+    function depositCollateral(
+        address collateralTokenAddress,
+        uint256 collateralAmount
+    ) public moreThanZero(collateralAmount) isAllowedToken(collateralTokenAddress) nonReentrant {
+        s_collateralDeposited[msg.sender][collateralTokenAddress] += collateralAmount;
+
+        emit CollateralDeposited(msg.sender, collateralTokenAddress, collateralAmount);
+
+        bool success = IERC20(collateralTokenAddress).transferFrom(msg.sender, address(this), collateralAmount);
+        if (!success) revert NFREngine__TransferFailed();
+    }
+
+    //////////////////////////////
+    /** @dev Internal Functions */
+    //////////////////////////////
+
+    /**
+     * @notice Check health factor (If user have enough collateral) If not -> Revert.
+     * @param user Address of user to be checked.
+     */
+    function revertIfHealthFactorIsBroken(address user) internal view {
+        uint256 userHealthFactor = _healthFactor(user);
+        if (userHealthFactor < MIN_HEALTH_FACTOR) revert NFREngine__BreaksHealthFactor(userHealthFactor);
+    }
+
+    /////////////////////////////
     /** @dev Private Functions */
+    /////////////////////////////
+
     function _redeemCollateral(address collateralTokenAddress, uint256 collateralAmount, address from, address to) private {
         s_collateralDeposited[from][collateralTokenAddress] -= collateralAmount;
 
@@ -202,15 +242,19 @@ contract NFREngine is ReentrancyGuard {
         if (!success) revert NFREngine__TransferFailed();
     }
 
-    function _burnNFR(uint256 amountNfrToBurn, address onBehalfOf, address dscFrom) private {
+    function _burnNFR(uint256 amountNfrToBurn, address onBehalfOf, address NfrFrom) private {
         s_NFRMinted[onBehalfOf] -= amountNfrToBurn;
 
-        bool success = i_nfr.transferFrom(dscFrom, address(this), amountNfrToBurn);
+        bool success = i_nfr.transferFrom(NfrFrom, address(this), amountNfrToBurn);
 
         // This conditional is hypothetically unreachable
         if (!success) revert NFREngine__TransferFailed();
         i_nfr.burn(amountNfrToBurn);
     }
+
+    //////////////////////////////////
+    /** @dev Private View Functions */
+    //////////////////////////////////
 
     function _getAccountInformation(address user) private view returns (uint256 totalNfrMinted, uint256 collateralValueInUsd) {
         totalNfrMinted = s_NFRMinted[user];
@@ -223,22 +267,34 @@ contract NFREngine is ReentrancyGuard {
      */
     function _healthFactor(address user) private view returns (uint256) {
         (uint256 totalNfrMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
+        if (totalNfrMinted <= 0) revert NFREngine__NeedsMoreThanZero();
+
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
 
         return (collateralAdjustedForThreshold * PRECISION) / totalNfrMinted;
     }
 
-    /** @dev Internal Functions */
-    /**
-     * @notice Check health factor (If user have enough collateral) If not -> Revert.
-     * @param user Address of user to be checked.
-     */
-    function revertIfHealthFactorIsBroken(address user) internal view {
-        uint256 userHealthFactor = _healthFactor(user);
-        if (userHealthFactor < MIN_HEALTH_FACTOR) revert NFREngine__BreaksHealthFactor(userHealthFactor);
+    function _getUsdValue(address token, uint256 amount) private view returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
+        (, int256 price, , , ) = priceFeed.staleCheckLatestRoundData();
+
+        // 1 ETH = $1000 -> The returned value from CL will be 1000 * 1e8
+        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
 
-    /** @dev Public Functions */
+    /** @dev It returns max NFR minted value if user total mints is 0, that's why we need to separate it from _healthFactor */
+    function _calculateHealthFactor(uint256 totalNfrMinted, uint256 collateralValueInUsd) internal pure returns (uint256) {
+        if (totalNfrMinted == 0) return type(uint256).max;
+
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+
+        return (collateralAdjustedForThreshold * PRECISION) / totalNfrMinted;
+    }
+
+    /////////////////////////////////
+    /** @dev Public View Functions */
+    /////////////////////////////////
+
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 price, , , ) = priceFeed.staleCheckLatestRoundData();
@@ -253,14 +309,47 @@ contract NFREngine is ReentrancyGuard {
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
             address token = s_collateralTokens[i];
             uint256 amount = s_collateralDeposited[user][token];
-            totalCollateralValueInUsd += getUsdValue(token, amount);
+            totalCollateralValueInUsd += _getUsdValue(token, amount);
         }
     }
 
-    function getUsdValue(address token, uint256 amount) public view returns (uint256) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 price, , , ) = priceFeed.latestRoundData();
-        // 1 ETH = $1000 -> The returned value from CL will be 1000 * 1e8
-        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
+    ///////////////////////////////////
+    /** @dev External View Functions */
+    ///////////////////////////////////
+
+    function calculateHealthFactor(uint256 totalNfrMinted, uint256 collateralValueInUsd) external pure returns (uint256) {
+        return _calculateHealthFactor(totalNfrMinted, collateralValueInUsd);
+    }
+
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION;
+    }
+
+    function getAdditionalFeedPrecision() external pure returns (uint256) {
+        return ADDITIONAL_FEED_PRECISION;
+    }
+
+    function getLiquidationThreshold() external pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    function getLiquidationBonus() external pure returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
+
+    function getMinHealthFactor() external pure returns (uint256) {
+        return MIN_HEALTH_FACTOR;
+    }
+
+    function getUsdValue(address token, uint256 amount) external view returns (uint256) {
+        return _getUsdValue(token, amount);
+    }
+
+    function getAccountInformation(address user) external view returns (uint256 totalNfrMinted, uint256 collateralValueInUsd) {
+        return _getAccountInformation(user);
+    }
+
+    function getHealthFactor(address user) external view returns (uint256) {
+        return _healthFactor(user);
     }
 }
