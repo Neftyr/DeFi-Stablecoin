@@ -11,7 +11,7 @@ ifeq ($(findstring --network sepolia,$(ARGS)),--network sepolia)
 endif
 
 deployHack:
-	@forge script script/DeployExploitContract.s.sol:DeployExploitContract $(NETWORK_ARGS)
+	@forge script script/challenge/DeployExploitContract.s.sol:DeployExploitContract $(NETWORK_ARGS)
 
 hack:
-	@forge script script/HackExploit.s.sol:HackExploit $(NETWORK_ARGS)
+	@forge script script/challenge/HackExploit.s.sol:HackExploit $(NETWORK_ARGS)
