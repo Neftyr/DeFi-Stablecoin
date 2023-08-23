@@ -120,8 +120,8 @@ contract NFREngine is ReentrancyGuard {
 
     /**
      * @notice This function will redeem your collateral. If you have NFR minted, you will not be able to redeem until you burn your NFR.
-     * @param collateralTokenAddress: The ERC20 token address of the collateral you're depositing.
-     * @param collateralAmount: The amount of collateral you're depositing.
+     * @param collateralTokenAddress: The ERC20 token address of the collateral you're redeeming.
+     * @param collateralAmount: The amount of collateral you're redeeming.
      */
     function redeemCollateral(address collateralTokenAddress, uint256 collateralAmount) external moreThanZero(collateralAmount) nonReentrant {
         _redeemCollateral(collateralTokenAddress, collateralAmount, msg.sender, msg.sender);
@@ -130,8 +130,8 @@ contract NFREngine is ReentrancyGuard {
 
     /**
      * @notice This function will withdraw your collateral and burn NFR in one transaction.
-     * @param collateralTokenAddress: The ERC20 token address of the collateral you're depositing.
-     * @param collateralAmount: The amount of collateral you're depositing.
+     * @param collateralTokenAddress: The ERC20 token address of the collateral you're redeeming.
+     * @param collateralAmount: The amount of collateral you're redeeming.
      * @param amountNfrToBurn: The amount of NFR you want to mint.
      */
     function redeemCollateralForNFR(address collateralTokenAddress, uint256 collateralAmount, uint256 amountNfrToBurn) external moreThanZero(collateralAmount) {
@@ -267,11 +267,10 @@ contract NFREngine is ReentrancyGuard {
      */
     function _healthFactor(address user) private view returns (uint256) {
         (uint256 totalNfrMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
-        if (totalNfrMinted <= 0) revert NFREngine__NeedsMoreThanZero();
 
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
 
-        return (collateralAdjustedForThreshold * PRECISION) / totalNfrMinted;
+        return totalNfrMinted == 0 ? 1e18 : ((collateralAdjustedForThreshold * PRECISION) / totalNfrMinted);
     }
 
     function _getUsdValue(address token, uint256 amount) private view returns (uint256) {
