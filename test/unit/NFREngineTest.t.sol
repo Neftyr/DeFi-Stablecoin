@@ -146,15 +146,26 @@ contract NFREngineTest is StdCheats, Test {
         assertEq(expectedDepositedAmount, COLLATERAL_AMOUNT);
     }
 
-    function testHealthFactorRevertsIfNoMintedNFR() public {
+    function testHealthFactorCalculatesCorrectly() public {
         uint256 health = nfrEngine.getHealthFactor(USER);
-        console.log("Health Factor: ", health);
 
-        assertEq(health, 1e18);
+        assertEq(health, type(uint256).max);
+
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(nfrEngine), COLLATERAL_AMOUNT);
+        nfrEngine.depositCollateralAndMintNFR(weth, COLLATERAL_AMOUNT, amountToMint);
+        vm.stopPrank();
+
+        (uint256 totalNfrMinted, uint256 collateralValueInUsd) = nfrEngine.getAccountInformation(USER);
+        uint256 currentHealth = nfrEngine.calculateHealthFactor(totalNfrMinted, collateralValueInUsd);
+        uint256 postHealth = nfrEngine.getHealthFactor(USER);
+
+        assertEq(currentHealth, postHealth);
+        assertEq(postHealth, (((collateralValueInUsd * 50) / 100) * 1e18) / totalNfrMinted);
     }
 
     // Try to calculate it to understand it
-    function testRevertsMintIfHealthFactorIsBroken() public {
+    function testRevertsDepositAndMintIfHealthFactorIsBroken() public {
         (, int256 price, , , ) = MockV3Aggregator(ethUsdPriceFeed).latestRoundData();
         amountToMint = (COLLATERAL_AMOUNT * (uint256(price) * nfrEngine.getAdditionalFeedPrecision())) / nfrEngine.getPrecision();
         console.log("Amt To Mint: ", amountToMint);
@@ -223,17 +234,6 @@ contract NFREngineTest is StdCheats, Test {
         vm.stopPrank();
     }
 
-    // function testCanRedeemCollateral() public depositedCollateral {
-    //     vm.startPrank(USER);
-
-    //     //uint256 collateral_to_redeem = 1 ether;
-    //     //console.log("Redeem: ", COLLATERAL_AMOUNT);
-    //     nfrEngine.redeemCollateral(weth, 10);
-    //     uint256 userBalance = ERC20Mock(weth).balanceOf(USER);
-    //     console.log("Balance: ", userBalance);
-    //     vm.stopPrank();
-    // }
-
     function testCanRedeemCollateral() public depositedCollateral {
         vm.startPrank(USER);
 
@@ -248,16 +248,67 @@ contract NFREngineTest is StdCheats, Test {
         assertEq(userBalance, COLLATERAL_AMOUNT);
     }
 
-    /** @dev ToDo Fix Below Test */
-    function testRevertsRedeemIfHealthFactorBroken() public {
+    function testRevertsIfNotEnoughCollateralToRedeem() public {
         vm.startPrank(USER);
-
+        vm.expectRevert(NFREngine.NFREngine__NotEnoughCollateralToRedeem.selector);
         nfrEngine.redeemCollateral(weth, COLLATERAL_AMOUNT);
 
         vm.stopPrank();
     }
 
-    function testCanBrunNFRAndRedeemForNFR() public {}
+    /** @dev ToDo Fix Below Test */
+    function testRevertsRedeemIfHealthFactorBroken() public depositedCollateralAndMintedNfr {
+        vm.startPrank(USER);
 
+        /** @dev Below value of healthFactor is 0 because it calculates with redeemed collateral? */
+        vm.expectRevert(abi.encodeWithSelector(NFREngine.NFREngine__BreaksHealthFactor.selector, 0));
+        nfrEngine.redeemCollateral(weth, COLLATERAL_AMOUNT);
+
+        vm.stopPrank();
+    }
+
+    function testEmitCollateralRedeemedWithCorrectArgs() public depositedCollateral {
+        vm.expectEmit(true, true, true, true, address(nfrEngine));
+        emit CollateralRedeemed(USER, USER, weth, COLLATERAL_AMOUNT);
+        vm.startPrank(USER);
+        nfrEngine.redeemCollateral(weth, COLLATERAL_AMOUNT);
+        vm.stopPrank();
+    }
+
+    function testCanBrunNFRAndRedeemForNFR() public depositedCollateralAndMintedNfr {
+        vm.startPrank(USER);
+
+        (uint256 totalNfrMinted, uint256 collateralValueInUsd) = nfrEngine.getAccountInformation(USER);
+        assertEq(totalNfrMinted, amountToMint);
+        assertEq(collateralValueInUsd, 20000e18);
+
+        nfr.approve(address(nfrEngine), amountToMint);
+        nfrEngine.redeemCollateralForNFR(weth, 0.1 ether, 1 ether);
+
+        (uint256 postTotalNfrMinted, uint256 postCollateralValueInUsd) = nfrEngine.getAccountInformation(USER);
+        assertEq(postTotalNfrMinted, amountToMint - 1 ether);
+        assertEq(postCollateralValueInUsd, 20000e18 - 20000e16);
+        vm.stopPrank();
+    }
+
+    function testRevertsBurnIfNoTokensMinted() public {
+        vm.startPrank(USER);
+
+        vm.expectRevert(NFREngine.NFREngine__NoTokensToBurn.selector);
+        nfrEngine.burnNFR(amountToMint);
+
+        vm.stopPrank();
+    }
+
+    function testCanBrunNFR() public depositedCollateralAndMintedNfr {
+        vm.startPrank(USER);
+
+        nfr.approve(address(nfrEngine), amountToMint);
+        nfrEngine.burnNFR(amountToMint);
+
+        vm.stopPrank();
+    }
+
+    // this test wont work
     function testRevertsBurnIfHealthFactorBroken() public {}
 }

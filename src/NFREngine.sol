@@ -37,8 +37,10 @@ contract NFREngine is ReentrancyGuard {
     error NFREngine__TransferFailed();
     error NFREngine__BreaksHealthFactor(uint256 healthFactor);
     error NFREngine__MintFailed();
-    error NFR__HealthFactorOk();
+    error NFREngine__HealthFactorOk();
     error NFREngine__HealthFactorNotImproved();
+    error NFREngine__NotEnoughCollateralToRedeem();
+    error NFREngine__NoTokensToBurn();
 
     /////////////////////
     /** @dev Libraries */
@@ -141,8 +143,12 @@ contract NFREngine is ReentrancyGuard {
     }
 
     function burnNFR(uint256 amount) external moreThanZero(amount) {
+        (uint256 totalNfrMinted, ) = _getAccountInformation(msg.sender);
+        if (totalNfrMinted <= 0) revert NFREngine__NoTokensToBurn();
+
         _burnNFR(amount, msg.sender, msg.sender);
-        revertIfHealthFactorIsBroken(msg.sender); // This will probably never hit...
+        /** @dev This will probably never hit as we can break healthFactor by increasing NFR minted not decreasing it... */
+        revertIfHealthFactorIsBroken(msg.sender);
     }
 
     /**
@@ -160,7 +166,7 @@ contract NFREngine is ReentrancyGuard {
     function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
         uint256 startingUserHealthFactor = _healthFactor(user);
 
-        if (startingUserHealthFactor >= MIN_HEALTH_FACTOR) revert NFR__HealthFactorOk();
+        if (startingUserHealthFactor >= MIN_HEALTH_FACTOR) revert NFREngine__HealthFactorOk();
 
         // If covering 100 NFR, we need to $100 of collateral
         uint256 tokenAmountFromDebtCovered = getTokenAmountFromUsd(collateral, debtToCover);
@@ -234,6 +240,8 @@ contract NFREngine is ReentrancyGuard {
     /////////////////////////////
 
     function _redeemCollateral(address collateralTokenAddress, uint256 collateralAmount, address from, address to) private {
+        if (s_collateralDeposited[from][collateralTokenAddress] == 0 || s_collateralDeposited[from][collateralTokenAddress] < collateralAmount)
+            revert NFREngine__NotEnoughCollateralToRedeem();
         s_collateralDeposited[from][collateralTokenAddress] -= collateralAmount;
 
         emit CollateralRedeemed(from, to, collateralTokenAddress, collateralAmount);
@@ -268,9 +276,7 @@ contract NFREngine is ReentrancyGuard {
     function _healthFactor(address user) private view returns (uint256) {
         (uint256 totalNfrMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
 
-        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-
-        return totalNfrMinted == 0 ? 1e18 : ((collateralAdjustedForThreshold * PRECISION) / totalNfrMinted);
+        return _calculateHealthFactor(totalNfrMinted, collateralValueInUsd);
     }
 
     function _getUsdValue(address token, uint256 amount) private view returns (uint256) {
@@ -283,11 +289,9 @@ contract NFREngine is ReentrancyGuard {
 
     /** @dev It returns max NFR minted value if user total mints is 0, that's why we need to separate it from _healthFactor */
     function _calculateHealthFactor(uint256 totalNfrMinted, uint256 collateralValueInUsd) internal pure returns (uint256) {
-        if (totalNfrMinted == 0) return type(uint256).max;
-
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
 
-        return (collateralAdjustedForThreshold * PRECISION) / totalNfrMinted;
+        return totalNfrMinted == 0 ? type(uint256).max : ((collateralAdjustedForThreshold * PRECISION) / totalNfrMinted);
     }
 
     /////////////////////////////////
