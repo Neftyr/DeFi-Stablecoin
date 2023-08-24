@@ -238,7 +238,7 @@ contract NFREngineTest is StdCheats, Test {
         vm.startPrank(USER);
 
         uint256 userPrevBal = ERC20Mock(weth).balanceOf(USER);
-        console.log("Prev Bal: ", userPrevBal);
+        console.log("Previous Balance: ", userPrevBal);
         nfrEngine.redeemCollateral(weth, COLLATERAL_AMOUNT);
         uint256 userBalance = ERC20Mock(weth).balanceOf(USER);
         console.log("Post Balance: ", userBalance);
@@ -248,7 +248,14 @@ contract NFREngineTest is StdCheats, Test {
         assertEq(userBalance, COLLATERAL_AMOUNT);
     }
 
-    function testRevertsRedeemIfHealthFactorBroken() public {}
+    /** @dev ToDo Fix Below Test */
+    function testRevertsRedeemIfHealthFactorBroken() public {
+        vm.startPrank(USER);
+
+        nfrEngine.redeemCollateral(weth, COLLATERAL_AMOUNT);
+
+        vm.stopPrank();
+    }
 
     function testCanBrunNFRAndRedeemForNFR() public {}
 
