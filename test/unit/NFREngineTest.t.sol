@@ -11,6 +11,9 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
+import {MockFailedMintNFR} from "../mocks/MockFailedMintNFR.sol";
+import {MockFailedTransferFrom} from "../mocks/MockFailedTransferFrom.sol";
+import {MockFailedTransfer} from "../mocks/MockFailedTransfer.sol";
 
 contract NFREngineTest is StdCheats, Test {
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
@@ -182,7 +185,9 @@ contract NFREngineTest is StdCheats, Test {
         vm.stopPrank();
     }
 
-    // // This test needs it's own setup
+    /** @dev TO BE FIXED AND UNDERSTOOD */
+
+    // This test needs it's own setup
     // function testRevertsIfTransferFromFails() public {
     //     // Arrange - Setup
     //     address owner = msg.sender;
@@ -248,15 +253,6 @@ contract NFREngineTest is StdCheats, Test {
         assertEq(userBalance, COLLATERAL_AMOUNT);
     }
 
-    function testRevertsIfNotEnoughCollateralToRedeem() public {
-        vm.startPrank(USER);
-        vm.expectRevert(NFREngine.NFREngine__NotEnoughCollateralToRedeem.selector);
-        nfrEngine.redeemCollateral(weth, COLLATERAL_AMOUNT);
-
-        vm.stopPrank();
-    }
-
-    /** @dev ToDo Fix Below Test */
     function testRevertsRedeemIfHealthFactorBroken() public depositedCollateralAndMintedNfr {
         vm.startPrank(USER);
 
@@ -291,6 +287,22 @@ contract NFREngineTest is StdCheats, Test {
         vm.stopPrank();
     }
 
+    /////////////////////////////////////////////
+    /**  @dev Collateral Min Level Check Tests */
+    /////////////////////////////////////////////
+
+    function testRevertsIfNotEnoughCollateralToRedeem() public {
+        vm.startPrank(USER);
+        vm.expectRevert(NFREngine.NFREngine__NotEnoughCollateralToRedeem.selector);
+        nfrEngine.redeemCollateral(weth, COLLATERAL_AMOUNT);
+
+        vm.stopPrank();
+    }
+
+    //////////////////////////////
+    /**  @dev Burn Tokens Tests */
+    //////////////////////////////
+
     function testRevertsBurnIfNoTokensMinted() public {
         vm.startPrank(USER);
 
@@ -309,6 +321,50 @@ contract NFREngineTest is StdCheats, Test {
         vm.stopPrank();
     }
 
-    // this test wont work
-    function testRevertsBurnIfHealthFactorBroken() public {}
+    //////////////////////////////
+    /**  @dev Liquidation Tests */
+    //////////////////////////////
+
+    function testCanLiquidateUserAndUpdatesValuesAccordingly() public {
+        // redeemCollateral from user -> liquidator
+        // burn NFR tokens from user -> liquidator
+    }
+
+    function testRevertsIfHealthFactorOk() public {}
+
+    function testRevertsLiquidateIfHealthFactorIsBroken() public {}
+
+    //////////////////////////
+    /**  @dev Getters Tests */
+    //////////////////////////
+
+    function testCanGetTokenAmountFromUsd() public {
+        vm.startPrank(USER);
+        uint256 tokenAmount = nfrEngine.getTokenAmountFromUsd(weth, 1 ether);
+
+        assertEq(tokenAmount, 0.0005 ether);
+        vm.stopPrank();
+    }
+
+    function testCanGetAccountCollateralValue() public {
+        vm.startPrank(USER);
+
+        uint256 collateralValue = nfrEngine.getAccountCollateralValue(msg.sender);
+        console.log("User Collateral Value: ", collateralValue);
+        assertEq(collateralValue, 0);
+
+        ERC20Mock(weth).approve(address(nfrEngine), COLLATERAL_AMOUNT);
+        nfrEngine.depositCollateral(weth, COLLATERAL_AMOUNT);
+        vm.stopPrank();
+
+        uint256 postCollateralValue = nfrEngine.getAccountCollateralValue(USER);
+        uint256 expectedCollateralValue = nfrEngine.getUsdValue(weth, COLLATERAL_AMOUNT);
+        console.log("User Post Collateral Value: ", postCollateralValue, "Expected: ", expectedCollateralValue);
+        assertEq(postCollateralValue, expectedCollateralValue);
+    }
+
+    function testGetNFR() public {
+        address nfrAddress = nfrEngine.getNFR();
+        assertEq(nfrAddress, address(nfr));
+    }
 }
