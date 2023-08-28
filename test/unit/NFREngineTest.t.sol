@@ -14,6 +14,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {MockFailedMintNFR} from "../mocks/MockFailedMintNFR.sol";
 import {MockFailedTransferFrom} from "../mocks/MockFailedTransferFrom.sol";
 import {MockFailedTransfer} from "../mocks/MockFailedTransfer.sol";
+import {MockMoreDebtNFR} from "../mocks/MockMoreDebtNFR.sol";
 
 contract NFREngineTest is StdCheats, Test {
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
@@ -38,6 +39,9 @@ contract NFREngineTest is StdCheats, Test {
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
     uint256 public constant MIN_HEALTH_FACTOR = 1e18;
     uint256 public constant LIQUIDATION_THRESHOLD = 50;
+
+    address public liquidator = makeAddr("liquidator");
+    uint256 public collateralToCover = 20 ether;
 
     function setUp() external {
         deployer = new DeployNFR();
@@ -167,7 +171,6 @@ contract NFREngineTest is StdCheats, Test {
         assertEq(postHealth, (((collateralValueInUsd * 50) / 100) * 1e18) / totalNfrMinted);
     }
 
-    // Try to calculate it to understand it
     function testRevertsDepositAndMintIfHealthFactorIsBroken() public {
         (, int256 price, , , ) = MockV3Aggregator(ethUsdPriceFeed).latestRoundData();
         amountToMint = (COLLATERAL_AMOUNT * (uint256(price) * nfrEngine.getAdditionalFeedPrecision())) / nfrEngine.getPrecision();
@@ -185,30 +188,33 @@ contract NFREngineTest is StdCheats, Test {
         vm.stopPrank();
     }
 
-    /** @dev TO BE FIXED AND UNDERSTOOD */
+    function testRevertsIfTransferFromFails() public {
+        // Arrange - Setup
+        address owner = msg.sender;
 
-    // This test needs it's own setup
-    // function testRevertsIfTransferFromFails() public {
-    //     // Arrange - Setup
-    //     address owner = msg.sender;
-    //     vm.prank(owner);
-    //     MockFailedTransferFrom mockDsc = new MockFailedTransferFrom();
-    //     tokenAddresses = [address(mockDsc)];
-    //     feedAddresses = [ethUsdPriceFeed];
-    //     vm.prank(owner);
-    //     nfrEnginengine mocknfrEngine = new nfrEnginengine(tokenAddresses, feedAddresses, address(mockDsc));
-    //     mockDsc.mint(user, amountCollateral);
+        vm.prank(owner);
+        MockFailedTransferFrom mockNfr = new MockFailedTransferFrom();
 
-    //     vm.prank(owner);
-    //     mockDsc.transferOwnership(address(mocknfrEngine));
-    //     // Arrange - User
-    //     vm.startPrank(user);
-    //     ERC20Mock(address(mockDsc)).approve(address(mocknfrEngine), amountCollateral);
-    //     // Act / Assert
-    //     vm.expectRevert(nfrEnginengine.nfrEnginengine__TransferFailed.selector);
-    //     mocknfrEngine.depositCollateral(address(mockDsc), amountCollateral);
-    //     vm.stopPrank();
-    // }
+        tokenAddresses = [address(mockNfr)];
+        priceFeedAddresses = [ethUsdPriceFeed];
+
+        vm.prank(owner);
+        NFREngine mockNfre = new NFREngine(tokenAddresses, priceFeedAddresses, address(mockNfr));
+
+        mockNfr.mint(USER, COLLATERAL_AMOUNT);
+
+        vm.prank(owner);
+        mockNfr.transferOwnership(address(mockNfre));
+
+        // Arrange - User
+        vm.startPrank(USER);
+        ERC20Mock(address(mockNfr)).approve(address(mockNfre), COLLATERAL_AMOUNT);
+
+        // Act / Assert
+        vm.expectRevert(NFREngine.NFREngine__TransferFailed.selector);
+        mockNfre.depositCollateral(address(mockNfr), COLLATERAL_AMOUNT);
+        vm.stopPrank();
+    }
 
     modifier depositedCollateral() {
         vm.startPrank(USER);
@@ -325,12 +331,75 @@ contract NFREngineTest is StdCheats, Test {
     /**  @dev Liquidation Tests */
     //////////////////////////////
 
+    modifier liquidated() {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(nfrEngine), COLLATERAL_AMOUNT);
+        nfrEngine.depositCollateralAndMintNFR(weth, COLLATERAL_AMOUNT, amountToMint);
+        vm.stopPrank();
+
+        /** @dev We are crashing ETH price -> 1 ETH = $18 */
+        int256 ethUsdUpdatedPrice = 18e8;
+
+        MockV3Aggregator(ethUsdPriceFeed).updateAnswer(ethUsdUpdatedPrice);
+        uint256 userHealthFactor = nfrEngine.getHealthFactor(USER);
+
+        /** @dev Setting up liquidator */
+        ERC20Mock(weth).mint(liquidator, collateralToCover);
+
+        vm.startPrank(liquidator);
+        ERC20Mock(weth).approve(address(nfrEngine), collateralToCover);
+        nfrEngine.depositCollateralAndMintNFR(weth, collateralToCover, amountToMint);
+        nfr.approve(address(nfrEngine), amountToMint);
+        /** @dev We are covering their whole debt */
+        nfrEngine.liquidate(weth, USER, amountToMint);
+        vm.stopPrank();
+        _;
+    }
+
+    /** @dev BELOW TO BE FIXED !!! */
     function testCanLiquidateUserAndUpdatesValuesAccordingly() public {
+        // 👍✔ -> windows + ; ℉℃⁂µ※
+        uint256 debt = 1000 ether;
+
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(nfrEngine), COLLATERAL_AMOUNT);
+        nfrEngine.depositCollateralAndMintNFR(weth, COLLATERAL_AMOUNT, amountToMint);
+        vm.stopPrank();
+
+        uint256 userHealthFactorBefore = nfrEngine.getHealthFactor(USER);
+        console.log("User Health Factor Before Price Crash: ", userHealthFactorBefore);
+        int256 ethUsdUpdatedPrice = 18e8;
+        MockV3Aggregator(ethUsdPriceFeed).updateAnswer(ethUsdUpdatedPrice);
+        uint256 userHealthFactor = nfrEngine.getHealthFactor(USER);
+        console.log("User Health Factor: ", userHealthFactor);
+
+        ERC20Mock(weth).mint(liquidator, collateralToCover);
+
+        vm.startPrank(liquidator);
+        ERC20Mock(weth).approve(address(nfrEngine), COLLATERAL_AMOUNT);
+        nfrEngine.depositCollateralAndMintNFR(weth, COLLATERAL_AMOUNT, amountToMint);
+        nfr.approve(address(nfrEngine), amountToMint);
+        nfrEngine.liquidate(weth, USER, amountToMint);
+        vm.stopPrank();
+
         // redeemCollateral from user -> liquidator
         // burn NFR tokens from user -> liquidator
     }
 
-    function testRevertsIfHealthFactorOk() public {}
+    function testRevertsIfHealthFactorOk() public {
+        ERC20Mock(weth).mint(liquidator, collateralToCover);
+
+        vm.startPrank(liquidator);
+
+        ERC20Mock(weth).approve(address(nfrEngine), collateralToCover);
+        nfrEngine.depositCollateralAndMintNFR(weth, collateralToCover, amountToMint);
+        nfr.approve(address(nfrEngine), amountToMint);
+
+        vm.expectRevert(NFREngine.NFREngine__HealthFactorOk.selector);
+        nfrEngine.liquidate(weth, USER, amountToMint);
+
+        vm.stopPrank();
+    }
 
     function testRevertsLiquidateIfHealthFactorIsBroken() public {}
 
