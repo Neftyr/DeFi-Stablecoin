@@ -182,7 +182,7 @@ contract NFREngine is ReentrancyGuard {
         _burnNFR(debtToCover, user, msg.sender);
 
         uint256 endingUserHealthFactor = _healthFactor(user);
-        // This conditional should never hit, but just in case
+        // This condition should never hit, but just in case
         if (endingUserHealthFactor <= startingUserHealthFactor) revert NFREngine__HealthFactorNotImproved();
 
         revertIfHealthFactorIsBroken(msg.sender);
@@ -358,5 +358,17 @@ contract NFREngine is ReentrancyGuard {
 
     function getNFR() external view returns (address) {
         return address(i_nfr);
+    }
+
+    function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
+        return s_collateralDeposited[user][token];
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
+    }
+
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
     }
 }

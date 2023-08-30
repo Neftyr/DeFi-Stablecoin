@@ -18,23 +18,23 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  */
 
 contract NeftyrStableCoin is ERC20Burnable, Ownable {
-    error NFR__NotEnoughTokensAmount();
-    error NFR__BurnAmountExceedsBalance();
-    error NFR__ZeroAddress();
+    error NeftyrStableCoin__NotEnoughTokensAmount();
+    error NeftyrStableCoin__BurnAmountExceedsBalance();
+    error NeftyrStableCoin__ZeroAddress();
 
     constructor() ERC20("Neftyr", "NFR") {}
 
     function burn(uint256 _amount) public override onlyOwner {
         uint256 balance = balanceOf(msg.sender);
-        if (_amount <= 0) revert NFR__NotEnoughTokensAmount();
-        if (balance < _amount) revert NFR__BurnAmountExceedsBalance();
+        if (_amount <= 0) revert NeftyrStableCoin__NotEnoughTokensAmount();
+        if (balance < _amount) revert NeftyrStableCoin__BurnAmountExceedsBalance();
 
         super.burn(_amount);
     }
 
     function mint(address _to, uint256 _amount) external onlyOwner returns (bool) {
-        if (_to == address(0)) revert NFR__ZeroAddress();
-        if (_amount <= 0) revert NFR__NotEnoughTokensAmount();
+        if (_to == address(0)) revert NeftyrStableCoin__ZeroAddress();
+        if (_amount <= 0) revert NeftyrStableCoin__NotEnoughTokensAmount();
 
         _mint(_to, _amount);
 
