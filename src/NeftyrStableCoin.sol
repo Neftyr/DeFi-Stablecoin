@@ -13,7 +13,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * Minting: Algorithmic
  * Relative Stability: Pegged to USD
  
- * This is the contract meant to be governed by DSCEngine.
+ * This is the contract meant to be governed by NFREngine.
  * This contract is just ERC20 implementation of our stablecoin system.
  */
 
