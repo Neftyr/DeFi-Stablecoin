@@ -81,9 +81,11 @@ contract StopOnRevertInvariants is StdInvariant, Test {
         nfre.getMinHealthFactor();
         nfre.getPrecision();
         nfre.getNFR();
-        // nfre.getTokenAmountFromUsd();
-        // nfre.getCollateralTokenPriceFeed();
-        // nfre.getCollateralBalanceOfUser();
-        // nfre.getAccountCollateralValue();
+        
+        /** @dev Those should be randomized of course not hard coded like below */
+        nfre.getTokenAmountFromUsd(weth, 1 ether);
+        nfre.getCollateralTokenPriceFeed(weth);
+        nfre.getCollateralBalanceOfUser(msg.sender, weth);
+        nfre.getAccountCollateralValue(msg.sender);
     }
 }
