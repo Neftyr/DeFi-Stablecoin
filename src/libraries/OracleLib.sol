@@ -7,6 +7,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
  * @title OracleLib
  * @author Neftyr
  * @notice This library is used to check the Chainlink Oracle for stale data.
+ 
  * If a price is stale, functions will revert, and render the NFREngine unusable - this is by design.
  * We want the NFREngine to freeze if prices become stale.
  

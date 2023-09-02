@@ -65,6 +65,7 @@ contract StopOnRevertInvariants is StdInvariant, Test {
 
         console.log("wethValue: %s", wethValue);
         console.log("wbtcValue: %s", wbtcValue);
+        console.log("Total Supply: ", totalSupply);
         console.log("Times mint function called: %s", handler.timesMintIsCalled());
 
         assert(wethValue + wbtcValue >= totalSupply);
