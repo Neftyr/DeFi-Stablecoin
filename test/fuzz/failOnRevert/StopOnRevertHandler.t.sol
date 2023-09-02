@@ -89,7 +89,7 @@ contract StopOnRevertHandler is Test {
 
         amountNfr = bound(amountNfr, 0, uint256(maxNfrToMint));
 
-        //amountNfr = bound(amountNfr, 0, MAX_DEPOSIT_SIZE);
+        if (amountNfr == 0) return;
 
         vm.prank(nfr.owner());
         nfr.mint(msg.sender, amountNfr);
