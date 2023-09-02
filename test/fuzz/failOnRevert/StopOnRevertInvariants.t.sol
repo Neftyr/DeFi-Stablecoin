@@ -88,7 +88,7 @@ contract StopOnRevertInvariants is StdInvariant, Test {
         /** @dev Those needs to be tested in helper as they need proper/restricted parameters */
         // nfre.getTokenAmountFromUsd();
         // nfre.getCollateralTokenPriceFeed();
-        // nfre.getCollateralBalanceOfUser();
-        // nfre.getAccountCollateralValue();
+        // nfre.getCollateralBalanceOfUser(); /** Tested ✔ */
+        // nfre.getAccountCollateralValue(); /** Tested ✔ */
     }
 }
