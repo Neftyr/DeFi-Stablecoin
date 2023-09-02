@@ -187,4 +187,9 @@ contract StopOnRevertHandler is Test {
         nfre.getCollateralBalanceOfUser(user, address(collateral));
         timesGettersTested++;
     }
+
+    function getAccountCollateralValue(address user) public {
+        nfre.getAccountCollateralValue(user);
+        timesGettersTested++;
+    }
 }
