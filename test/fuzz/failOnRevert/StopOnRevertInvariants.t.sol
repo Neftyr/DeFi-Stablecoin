@@ -65,7 +65,7 @@ contract StopOnRevertInvariants is StdInvariant, Test {
 
         console.log("wethValue: %s", wethValue);
         console.log("wbtcValue: %s", wbtcValue);
-        /** @dev totalSupply will be different than 0 only if we enable mintNFR() in Helper! */
+        /** @dev Below totalSupply and time mint will be different than 0 only if we enable mintNFR() in Helper! */
         console.log("Total Supply: ", totalSupply);
         console.log("Times mint function called: %s", handler.timesMintIsCalled());
 
@@ -81,9 +81,10 @@ contract StopOnRevertInvariants is StdInvariant, Test {
         nfre.getMinHealthFactor();
         nfre.getPrecision();
         nfre.getNFR();
-        
+
         /** @dev Those should be randomized of course not hard coded like below */
         nfre.getTokenAmountFromUsd(weth, 1 ether);
+        console.log("token amt", nfre.getTokenAmountFromUsd(weth, 1 ether));
         nfre.getCollateralTokenPriceFeed(weth);
         nfre.getCollateralBalanceOfUser(msg.sender, weth);
         nfre.getAccountCollateralValue(msg.sender);
