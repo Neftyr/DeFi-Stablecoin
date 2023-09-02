@@ -62,12 +62,12 @@ pragma solidity ^0.8.19;
 //         nfre.redeemCollateral(address(collateral), amountCollateral);
 //     }
 
-//     function burnnfr(uint256 amountNfr) public {
+//     function burnNfr(uint256 amountNfr) public {
 //         amountNfr = bound(amountNfr, 0, nfr.balanceOf(msg.sender));
 //         nfr.burn(amountNfr);
 //     }
 
-//     function mintnfr(uint256 amountNfr) public {
+//     function mintNfr(uint256 amountNfr) public {
 //         amountNfr = bound(amountNfr, 0, MAX_DEPOSIT_SIZE);
 //         nfr.mint(msg.sender, amountNfr);
 //     }

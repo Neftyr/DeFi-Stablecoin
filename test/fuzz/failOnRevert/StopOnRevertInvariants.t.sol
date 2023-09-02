@@ -81,6 +81,6 @@ contract StopOnRevertInvariants is StdInvariant, Test {
         // nfre.getTokenAmountFromUsd();
         // nfre.getCollateralTokenPriceFeed();
         // nfre.getCollateralBalanceOfUser();
-        // getAccountCollateralValue();
+        // nfre.getAccountCollateralValue();
     }
 }

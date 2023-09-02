@@ -47,7 +47,7 @@ contract StopOnRevertHandler is Test {
     /////////////////////
 
     function mintAndDepositCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
-        /** @dev Bound is function from utils and it just gives us range for x -> bound(x, min, max) */
+        /** @dev Bound is function from utils and it just gives us x -> bound(x, min, max) to be in min/max range */
         amountCollateral = bound(amountCollateral, 1, MAX_DEPOSIT_SIZE);
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
 
@@ -62,6 +62,7 @@ contract StopOnRevertHandler is Test {
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
         uint256 maxCollateral = nfre.getCollateralBalanceOfUser(msg.sender, address(collateral));
 
+        // We are making range (0 - mx) instead of (1 - max) to avoid making maxCollateral < 1 as it will crash bound() function
         amountCollateral = bound(amountCollateral, 0, maxCollateral);
 
         if (amountCollateral == 0) {
@@ -84,7 +85,8 @@ contract StopOnRevertHandler is Test {
 
     /** @dev Only the NFREngine can mint NFR! */
     // function mintNFR(uint256 amountNfr) public {
-    //     amountNfr = bound(amountNfr, 0, MAX_DEPOSIT_SIZE);
+    //     amountNfr = bound(amountNfr, 1, MAX_DEPOSIT_SIZE);
+    //
     //     vm.prank(nfr.owner());
     //     nfr.mint(msg.sender, amountNfr);
     // }
