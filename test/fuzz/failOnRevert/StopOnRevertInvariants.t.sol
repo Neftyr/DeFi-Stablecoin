@@ -65,6 +65,7 @@ contract StopOnRevertInvariants is StdInvariant, Test {
 
         console.log("wethValue: %s", wethValue);
         console.log("wbtcValue: %s", wbtcValue);
+        /** @dev totalSupply will be different than 0 only if we enable mintNFR() in Helper! */
         console.log("Total Supply: ", totalSupply);
         console.log("Times mint function called: %s", handler.timesMintIsCalled());
 

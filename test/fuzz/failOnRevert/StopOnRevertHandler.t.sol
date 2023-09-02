@@ -27,7 +27,7 @@ contract StopOnRevertHandler is Test {
     /** @dev Ghost Variables */
     // Checking if below function has been tested
     uint256 public timesMintIsCalled;
-    //address[] usersWithCollateralDeposited;
+    address[] usersWithCollateralDeposited;
 
     // We are doing uint96 because in case of further deposits we avoid overextending uint256
     uint96 public constant MAX_DEPOSIT_SIZE = type(uint96).max;
@@ -70,7 +70,7 @@ contract StopOnRevertHandler is Test {
         //     usersWithCollateralDeposited.push(msg.sender);
         // }
 
-        // usersWithCollateralDeposited.push(msg.sender);
+        usersWithCollateralDeposited.push(msg.sender);
         vm.stopPrank();
     }
 
@@ -95,8 +95,8 @@ contract StopOnRevertHandler is Test {
         nfre.burnNFR(amountNfr);
     }
 
-    /** @dev BELOW IS TO DEBUG */
-    /** @dev Only the NFREngine can mint NFR! Also only user with deposited collateral can mint */
+    /** @dev TO RUN BELOW COMMENT OUT: liquidate, transferNfr, updateCollateralPrice */
+    /** @dev Only user with deposited collateral can mint NFR */
     // function mintNFR(uint256 amountNfr, uint256 addressSeed) public {
     //     if (usersWithCollateralDeposited.length == 0) return;
 
