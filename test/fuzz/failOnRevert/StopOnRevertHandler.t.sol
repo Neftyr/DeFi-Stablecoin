@@ -24,7 +24,11 @@ contract StopOnRevertHandler is Test {
     ERC20Mock public weth;
     ERC20Mock public wbtc;
 
-    // Ghost Variables
+    /** @dev Ghost Variables */
+    // Checking if below function has been tested
+    uint256 public timesMintIsCalled;
+    //address[] usersWithCollateralDeposited;
+
     // We are doing uint96 because in case of further deposits we avoid overextending uint256
     uint96 public constant MAX_DEPOSIT_SIZE = type(uint96).max;
 
@@ -55,6 +59,18 @@ contract StopOnRevertHandler is Test {
         collateral.mint(msg.sender, amountCollateral);
         collateral.approve(address(nfre), amountCollateral);
         nfre.depositCollateral(address(collateral), amountCollateral);
+
+        /** @dev Below loop will be enormous because we are running a lot of tests, so it is better to just push every address (we will have a lot of duplicates) */
+        // if (usersWithCollateralDeposited.length > 0) {
+        //     for (uint i = 0; i < usersWithCollateralDeposited.length; i++) {
+        //         if (msg.sender == usersWithCollateralDeposited[i]) return;
+        //         usersWithCollateralDeposited.push(msg.sender);
+        //     }
+        // } else {
+        //     usersWithCollateralDeposited.push(msg.sender);
+        // }
+
+        // usersWithCollateralDeposited.push(msg.sender);
         vm.stopPrank();
     }
 
@@ -62,7 +78,7 @@ contract StopOnRevertHandler is Test {
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
         uint256 maxCollateral = nfre.getCollateralBalanceOfUser(msg.sender, address(collateral));
 
-        // We are making range (0 - mx) instead of (1 - max) to avoid making maxCollateral < 1 as it will crash bound() function
+        // We are making range (0 - max) instead of (1 - max) to avoid making maxCollateral < 1 as it will crash bound() function
         amountCollateral = bound(amountCollateral, 0, maxCollateral);
 
         if (amountCollateral == 0) return;
@@ -79,21 +95,34 @@ contract StopOnRevertHandler is Test {
         nfre.burnNFR(amountNfr);
     }
 
-    /** @dev Only the NFREngine can mint NFR! */
-    function mintNFR(uint256 amountNfr) public {
-        (uint256 totalNfrMinted, uint256 collateralValueInUsd) = nfre.getAccountInformation(msg.sender);
+    /** @dev BELOW IS TO DEBUG */
+    /** @dev Only the NFREngine can mint NFR! Also only user with deposited collateral can mint */
+    // function mintNFR(uint256 amountNfr, uint256 addressSeed) public {
+    //     if (usersWithCollateralDeposited.length == 0) return;
 
-        int256 maxNfrToMint = (int256(collateralValueInUsd) / 2) - int256(totalNfrMinted);
+    //     address sender = usersWithCollateralDeposited[addressSeed % usersWithCollateralDeposited.length];
+    //     (uint256 totalNfrMinted, uint256 collateralValueInUsd) = nfre.getAccountInformation(sender);
+    //     int256 maxNfrToMint = (int256(collateralValueInUsd) / 2) - int256(totalNfrMinted);
 
-        if (maxNfrToMint < 0) return;
+    //     if (maxNfrToMint < 0) return;
 
-        amountNfr = bound(amountNfr, 0, uint256(maxNfrToMint));
+    //     amountNfr = bound(amountNfr, 0, uint256(maxNfrToMint));
 
-        if (amountNfr == 0) return;
+    //     if (amountNfr == 0) return;
 
-        vm.prank(nfr.owner());
-        nfr.mint(msg.sender, amountNfr);
-    }
+    //     vm.prank(sender);
+    //     nfre.mintNFR(amountNfr);
+    //     timesMintIsCalled++;
+    // }
+
+    /** @dev Only the NFREngine can mint NFR! Below will be crashing other functions as we break health factor by minting*/
+    // function mintNFR(uint256 amountNfr) public {
+    //     amountNfr = bound(amountNfr, 0, MAX_DEPOSIT_SIZE);
+
+    //     vm.prank(nfr.owner());
+    //     nfr.mint(msg.sender, amountNfr);
+    //     timesMintIsCalled++;
+    // }
 
     function liquidate(uint256 collateralSeed, address userToBeLiquidated, uint256 debtToCover) public {
         uint256 minHealthFactor = nfre.getMinHealthFactor();

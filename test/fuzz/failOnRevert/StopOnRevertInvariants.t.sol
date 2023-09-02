@@ -52,9 +52,9 @@ contract StopOnRevertInvariants is StdInvariant, Test {
         handler = new StopOnRevertHandler(nfre, nfr);
 
         targetContract(address(handler));
-        // targetContract(address(ethUsdPriceFeed)); Why can't we just do this?
     }
 
+    /** @dev We are just calling this to test everything coded in Handler "forge test --mt invariant_protocolMustHaveMoreValueThatTotalSupplyDollars -vv" */
     function invariant_protocolMustHaveMoreValueThatTotalSupplyDollars() public view {
         uint256 totalSupply = nfr.totalSupply();
         uint256 wethDeposted = ERC20Mock(weth).balanceOf(address(nfre));
@@ -65,6 +65,7 @@ contract StopOnRevertInvariants is StdInvariant, Test {
 
         console.log("wethValue: %s", wethValue);
         console.log("wbtcValue: %s", wbtcValue);
+        console.log("Times mint function called: %s", handler.timesMintIsCalled());
 
         assert(wethValue + wbtcValue >= totalSupply);
     }
