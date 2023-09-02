@@ -181,6 +181,7 @@ contract StopOnRevertHandler is Test {
     /////////////////////////////
 
     function getCollateralBalanceOfUser(address user, uint256 collateralSeed) public {
+        /** @dev We do not need to restrict below */
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
 
         nfre.getCollateralBalanceOfUser(user, address(collateral));
