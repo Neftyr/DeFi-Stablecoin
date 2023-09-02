@@ -81,7 +81,7 @@ pragma solidity ^0.8.19;
 //     /** @dev NeftyrStableCoin */
 //     ////////////////////////////
 
-//     function transfernfr(uint256 amountNfr, address to) public {
+//     function transfernfr(address to, uint256 amountNfr) public {
 //         amountNfr = bound(amountNfr, 0, nfr.balanceOf(msg.sender));
 //         vm.prank(msg.sender);
 //         nfr.transfer(to, amountNfr);

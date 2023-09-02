@@ -141,7 +141,7 @@ contract StopOnRevertHandler is Test {
     /** @dev NeftyrStableCoin */
     ////////////////////////////
 
-    function transferNfr(uint256 amountNfr, address to) public {
+    function transferNfr(address to, uint256 amountNfr) public {
         if (to == address(0)) {
             to = address(1);
         }
