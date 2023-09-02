@@ -65,9 +65,7 @@ contract StopOnRevertHandler is Test {
         // We are making range (0 - mx) instead of (1 - max) to avoid making maxCollateral < 1 as it will crash bound() function
         amountCollateral = bound(amountCollateral, 0, maxCollateral);
 
-        if (amountCollateral == 0) {
-            return;
-        }
+        if (amountCollateral == 0) return;
 
         nfre.redeemCollateral(address(collateral), amountCollateral);
     }
@@ -76,28 +74,32 @@ contract StopOnRevertHandler is Test {
         // Must Burn More Than 0
         amountNfr = bound(amountNfr, 0, nfr.balanceOf(msg.sender));
 
-        if (amountNfr == 0) {
-            return;
-        }
+        if (amountNfr == 0) return;
 
         nfre.burnNFR(amountNfr);
     }
 
     /** @dev Only the NFREngine can mint NFR! */
-    // function mintNFR(uint256 amountNfr) public {
-    //     amountNfr = bound(amountNfr, 1, MAX_DEPOSIT_SIZE);
-    //
-    //     vm.prank(nfr.owner());
-    //     nfr.mint(msg.sender, amountNfr);
-    // }
+    function mintNFR(uint256 amountNfr) public {
+        (uint256 totalNfrMinted, uint256 collateralValueInUsd) = nfre.getAccountInformation(msg.sender);
+
+        int256 maxNfrToMint = (int256(collateralValueInUsd) / 2) - int256(totalNfrMinted);
+
+        if (maxNfrToMint < 0) return;
+
+        amountNfr = bound(amountNfr, 0, uint256(maxNfrToMint));
+
+        //amountNfr = bound(amountNfr, 0, MAX_DEPOSIT_SIZE);
+
+        vm.prank(nfr.owner());
+        nfr.mint(msg.sender, amountNfr);
+    }
 
     function liquidate(uint256 collateralSeed, address userToBeLiquidated, uint256 debtToCover) public {
         uint256 minHealthFactor = nfre.getMinHealthFactor();
         uint256 userHealthFactor = nfre.getHealthFactor(userToBeLiquidated);
 
-        if (userHealthFactor >= minHealthFactor) {
-            return;
-        }
+        if (userHealthFactor >= minHealthFactor) return;
 
         debtToCover = bound(debtToCover, 1, uint256(type(uint96).max));
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
@@ -109,7 +111,7 @@ contract StopOnRevertHandler is Test {
     /** @dev NeftyrStableCoin */
     ////////////////////////////
 
-    function transfernfr(uint256 amountNfr, address to) public {
+    function transferNfr(uint256 amountNfr, address to) public {
         if (to == address(0)) {
             to = address(1);
         }
