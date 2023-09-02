@@ -46,7 +46,7 @@ contract StopOnRevertHandler is Test {
     /////////////////////
 
     function mintAndDepositCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
-        // Must be more than 0
+        /** @dev Bound is function from utils and it just gives us range for x -> bound(x, min, max) */
         amountCollateral = bound(amountCollateral, 1, MAX_DEPOSIT_SIZE);
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
 
