@@ -25,6 +25,7 @@ contract StopOnRevertHandler is Test {
     ERC20Mock public wbtc;
 
     // Ghost Variables
+    // We are doing uint96 because in case of further deposits we avoid overextending uint256
     uint96 public constant MAX_DEPOSIT_SIZE = type(uint96).max;
 
     constructor(NFREngine _nfre, NeftyrStableCoin _nfr) {
