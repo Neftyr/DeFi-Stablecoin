@@ -27,6 +27,7 @@ contract StopOnRevertHandler is Test {
     /** @dev Ghost Variables */
     // Checking if below function has been tested
     uint256 public timesMintIsCalled;
+    uint256 public timesGettersTested;
     address[] usersWithCollateralDeposited;
 
     // We are doing uint96 because in case of further deposits we avoid overextending uint256
@@ -173,5 +174,16 @@ contract StopOnRevertHandler is Test {
         } else {
             return wbtc;
         }
+    }
+
+    /////////////////////////////
+    /** @dev Getters Functions */
+    /////////////////////////////
+
+    function getCollateralBalanceOfUser(uint256 collateralSeed) public {
+        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+
+        nfre.getCollateralBalanceOfUser(msg.sender, address(collateral));
+        timesGettersTested++;
     }
 }

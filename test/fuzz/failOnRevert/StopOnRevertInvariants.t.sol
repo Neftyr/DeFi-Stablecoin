@@ -69,6 +69,9 @@ contract StopOnRevertInvariants is StdInvariant, Test {
         console.log("Total Supply: ", totalSupply);
         console.log("Times mint function called: %s", handler.timesMintIsCalled());
 
+        /** @dev Part for getters that needs restricted parameters */
+        console.log("Times getters tested: %s", handler.timesGettersTested());
+
         assert(wethValue + wbtcValue >= totalSupply);
     }
 
@@ -82,11 +85,10 @@ contract StopOnRevertInvariants is StdInvariant, Test {
         nfre.getPrecision();
         nfre.getNFR();
 
-        /** @dev Those should be randomized of course not hard coded like below */
-        nfre.getTokenAmountFromUsd(weth, 1 ether);
-        console.log("token amt", nfre.getTokenAmountFromUsd(weth, 1 ether));
-        nfre.getCollateralTokenPriceFeed(weth);
-        nfre.getCollateralBalanceOfUser(msg.sender, weth);
-        nfre.getAccountCollateralValue(msg.sender);
+        /** @dev Those needs to be tested in helper as they need proper/restricted parameters */
+        // nfre.getTokenAmountFromUsd();
+        // nfre.getCollateralTokenPriceFeed();
+        // nfre.getCollateralBalanceOfUser();
+        // nfre.getAccountCollateralValue();
     }
 }
